@@ -34,7 +34,7 @@ const userSchema = new mongoose.Schema(
     // 🎭 Role Management
     role: {
       type: String,
-      enum: ["superadmin", "admin", "agent", "handyman", "visitor"],
+      enum: ["superadmin", "admin", "agent", "serviceprovider", "visitor", "agency", "professional", "hotel"], 
       default: "visitor",
     },
     isNewUser: {

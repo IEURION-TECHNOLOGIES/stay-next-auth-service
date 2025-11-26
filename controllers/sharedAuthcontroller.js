@@ -1,4 +1,6 @@
 // controllers/auth.js
+import cloudinary from "../config/cloudinaryConfig.js";
+import streamifier from "streamifier";
 import User from "../models/User.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
@@ -51,6 +53,7 @@ export const register = async (req, res) => {
       "Verify Your Email",
       emailTemplate("verifyEmail", user, null, { verificationLink })
     );
+
 
     res.status(201).json({
       message: "Registration successful. Please verify your email.",
@@ -164,7 +167,7 @@ export const googleLogin = async (req, res) => {
 
     const ticket = await client.verifyIdToken({ idToken: token, audience: process.env.GOOGLE_CLIENT_ID });
     const { name, email, picture, sub } = ticket.getPayload();
-
+    console.log("check: ", ticket.audience)
     let user = await User.findOne({ email });
     if (!user) {
       const hashed = await bcrypt.hash(sub + "_google", 10);
@@ -176,6 +179,7 @@ export const googleLogin = async (req, res) => {
         role: "visitor",
         isGoogleUser: true,
         isNewUser: true,
+        isVerified: true,
       });
     }
 
@@ -194,7 +198,9 @@ export const googleLogin = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        isNewUser: user.isNewUser,
         profileImage: user.profileImage,
+        isVerified: user.isVerified,
       },
     });
   } catch (err) {
@@ -214,6 +220,53 @@ export const logout = (req, res) => {
   });
   res.status(200).json({ message: "Logged out successfully" });
 };
+
+
+// =======================
+// UPLOAD PROFILE IMAGE (Cloudinary)
+// =======================
+export const uploadProfileImage = async (req, res) => {
+  try {
+    // Verify JWT from cookie
+    const token = req.cookies.token;
+    if (!token) return res.status(401).json({ message: "Unauthorized" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "mysecret");
+    const user = await User.findById(decoded.userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+
+    // Upload to Cloudinary using memory buffer
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: "profile_images",
+        public_id: `user_${user._id}`,
+        overwrite: true,
+      },
+      async (error, result) => {
+        if (error) {
+          console.error("🔥 Cloudinary upload error:", error);
+          return res.status(500).json({ message: "Cloud upload failed" });
+        }
+
+        user.profileImage = result.secure_url;
+        await user.save();
+
+        res.status(200).json({
+          message: "Profile image updated successfully",
+          profileImage: user.profileImage,
+        });
+      }
+    );
+
+    streamifier.createReadStream(req.file.buffer).pipe(uploadStream);
+  } catch (err) {
+    console.error("🔥 Upload profile image error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 
 // =======================
 // GET ME
@@ -321,6 +374,39 @@ export const setRole = async (req, res) => {
     });
   } catch (err) {
     console.error("🔥 Set role error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+export const settings = async (req, res) => {
+  try {
+    const userId = req.user.userId; // from protect middleware
+    const { name, notification, profileImage, resetPassword } = req.body;
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    if (name) user.name = name;
+    if (notification !== undefined) user.notifications = notification;
+    if (profileImage) user.profileImage = profileImage;
+    if (resetPassword) {
+      user.password = await bcrypt.hash(resetPassword, 10);
+    }
+    await user.save();
+
+    res.status(200).json({
+      message: "Settings updated successfully",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        profileImage: user.profileImage,
+        notifications: user.notifications
+      },
+
+    });
+
+  } catch (err) {
+    console.error("🔥 Settings error:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };

@@ -29,6 +29,7 @@
     "multer-storage-cloudinary": "^4.0.0",
     "nodemailer": "^7.0.5",
     "resend": "^6.2.2",
+    "streamifier": "^0.1.1",
     "zod": "^4.0.5"
   },
   "devDependencies": {

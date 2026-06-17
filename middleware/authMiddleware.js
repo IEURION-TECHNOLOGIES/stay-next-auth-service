@@ -1,22 +1,27 @@
 import jwt from 'jsonwebtoken';
 
 export const protect = (req, res, next) => {
-  const token = req.cookies.token; // ✅ get from cookie
+  let token = req.cookies?.token;
+
+  // 🚀 FALLBACK: Check Authorization Header if cookie fails cross-origin mapping
+  if (!token && req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+    token = req.headers.authorization.split(" ")[1];
+  }
+
   if (!token) {
     return res.status(401).json({ message: 'No token provided' });
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // or fetch from DB if needed
+    req.user = decoded; // Contains structure: userId, role, etc.
     next();
   } catch (err) {
     return res.status(401).json({ message: 'Invalid or expired token' });
   }
 };
 
-
-// ✅ Allow only admins
+// Allow only admins
 export const isAdmin = (req, res, next) => {
   if (!req.user || req.user.role !== "admin") {
     return res.status(403).json({ message: "Forbidden: Admins only" });
@@ -24,7 +29,7 @@ export const isAdmin = (req, res, next) => {
   next();
 };
 
-// ✅ Allow only superadmins
+// Allow only superadmins
 export const isSuperAdmin = (req, res, next) => {
   if (!req.user || req.user.role !== "superadmin") {
     return res.status(403).json({ message: "Forbidden: Superadmins only" });

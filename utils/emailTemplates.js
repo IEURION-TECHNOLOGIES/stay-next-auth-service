@@ -2,6 +2,13 @@ export const emailTemplate = (action, user, raw, extra = {}) => {
   let title = "";
   let body = "";
 
+  // 🛠️ Dynamic URL Handler: 
+  // Extracts the clean URL based on whether you are running locally or in production.
+  const isDev = process.env.NODE_ENV === "development";
+  const baseClientUrl = process.env.CLIENT_URL
+    ? (isDev ? process.env.CLIENT_URL.split(",")[0].trim() : process.env.CLIENT_URL.split(",")[1]?.trim() || process.env.CLIENT_URL.split(",")[0].trim())
+    : "https://stay-next-frontend.vercel.app";
+
   switch (action) {
     case "created":
       title = "🎉 Welcome, New Admin!";
@@ -85,7 +92,7 @@ export const emailTemplate = (action, user, raw, extra = {}) => {
       
       <div style="background-color: #f9fafb; text-align: center; padding: 18px; font-size: 12px; color: #9ca3af;">
         © ${new Date().getFullYear()} Stay Next. All rights reserved.<br/>
-        <a href="${process.env.CLIENT_URL}" data-notrack="true" style="color:#16a34a; text-decoration:none;">Visit Website</a>
+        <a href="${baseClientUrl}" data-notrack="true" style="color:#16a34a; text-decoration:none;">Visit Website</a>
       </div>
     </div>
   </div>

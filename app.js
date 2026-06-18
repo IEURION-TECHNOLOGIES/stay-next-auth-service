@@ -31,13 +31,20 @@ if (isDev) {
   app.options(/.*/, cors());
   console.log("⚙️  Dev CORS: All origins allowed");
 } else {
-  // 🔒 Production CORS (restricted)
+  // 🔒 Production CORS (restricted to your defined Render environment URLs)
+  // This parses your Render string once when the server boots up
+  const allowedOrigins = process.env.CLIENT_URL?.split(",").map((o) => o.trim()) || [];
+  console.log("Allowed Origins:", allowedOrigins);
+
   const corsOptions = {
     origin: (origin, callback) => {
-      const allowedOrigins =
-        process.env.CLIENT_URL?.split(",").map((o) => o.trim()) || [];
+      // Allow server-to-server or tool requests (like Postman) with no origin
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
+      
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      
       console.log("❌ Blocked by CORS:", origin);
       return callback(new Error("Not allowed by CORS"));
     },
@@ -45,6 +52,7 @@ if (isDev) {
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   };
+  
   app.use(cors(corsOptions));
   app.options(/.*/, cors(corsOptions));
   console.log("🔒 Prod CORS: Restricted origins enabled");

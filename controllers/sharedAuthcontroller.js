@@ -13,6 +13,16 @@ import { generateToken } from "../utils/jwt.js";
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const isProduction = process.env.NODE_ENV === "production";
 
+// 🛠️ Helper function to isolate the correct client URL from your comma-separated list
+const getClientUrl = () => {
+  if (!process.env.CLIENT_URL) return "https://stay-next-frontend.vercel.app";
+  
+  const urls = process.env.CLIENT_URL.split(",").map(url => url.trim());
+  
+  // In development, pick the first URL (localhost). In production, pick the second URL (Vercel).
+  return process.env.NODE_ENV === "development" ? urls[0] : (urls[1] || urls[0]);
+};
+
 // =======================
 // REGISTER
 // =======================
@@ -47,13 +57,15 @@ export const register = async (req, res) => {
     await user.save({ validateBeforeSave: false });
 
     // Send verification email via Brevo
-    const verificationLink = `${process.env.CLIENT_URL}/verify-email?token=${verificationToken}`;
+    // 💡 Uses helper function to build clean single link target
+    const currentClientUrl = getClientUrl();
+    const verificationLink = `${currentClientUrl}/verify-email?token=${verificationToken}`;
+    
     await sendEmail(
       user.email,
       "Verify Your Email",
       emailTemplate("verifyEmail", user, null, { verificationLink })
     );
-
 
     res.status(201).json({
       message: "Registration successful. Please verify your email.",
@@ -221,7 +233,6 @@ export const logout = (req, res) => {
   res.status(200).json({ message: "Logged out successfully" });
 };
 
-
 // =======================
 // UPLOAD PROFILE IMAGE (Cloudinary)
 // =======================
@@ -267,7 +278,6 @@ export const uploadProfileImage = async (req, res) => {
   }
 };
 
-
 // =======================
 // GET ME
 // =======================
@@ -303,7 +313,10 @@ export const forgotPassword = async (req, res) => {
     user.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 min
     await user.save({ validateBeforeSave: false });
 
-    const resetLink = `${process.env.CLIENT_URL}/reset-password/${token}`;
+    // 💡 Uses helper function to build clean single link target
+    const currentClientUrl = getClientUrl();
+    const resetLink = `${currentClientUrl}/reset-password/${token}`;
+    
     await sendEmail(
       user.email,
       "Password Reset Request",
@@ -402,9 +415,7 @@ export const settings = async (req, res) => {
         profileImage: user.profileImage,
         notifications: user.notifications
       },
-
     });
-
   } catch (err) {
     console.error("🔥 Settings error:", err);
     res.status(500).json({ message: "Server error", error: err.message });

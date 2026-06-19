@@ -281,7 +281,7 @@ export const uploadProfileImage = async (req, res) => {
   }
 };
 
-/export const getMe = async (req, res) => {
+export const getMe = async (req, res) => {
   try {
     let token = req.cookies?.token;
     if (!token && req.headers.authorization?.startsWith("Bearer")) {

@@ -207,6 +207,7 @@ export const googleLogin = async (req, res) => {
       message: "Google login successful",
       user: {
         id: user._id,
+        token: jwtToken,
         name: user.name,
         email: user.email,
         role: user.role,
@@ -238,8 +239,10 @@ export const logout = (req, res) => {
 // =======================
 export const uploadProfileImage = async (req, res) => {
   try {
-    // Verify JWT from cookie
-    const token = req.cookies.token;
+    let token = req.cookies?.token;
+    if (!token && req.headers.authorization?.startsWith("Bearer")) {
+      token = req.headers.authorization.split(" ")[1];
+    }
     if (!token) return res.status(401).json({ message: "Unauthorized" });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "mysecret");
@@ -278,12 +281,12 @@ export const uploadProfileImage = async (req, res) => {
   }
 };
 
-// =======================
-// GET ME
-// =======================
-export const getMe = async (req, res) => {
+/export const getMe = async (req, res) => {
   try {
-    const token = req.cookies.token;
+    let token = req.cookies?.token;
+    if (!token && req.headers.authorization?.startsWith("Bearer")) {
+      token = req.headers.authorization.split(" ")[1];
+    }
     if (!token) return res.status(401).json({ message: "Unauthorized" });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "mysecret");
